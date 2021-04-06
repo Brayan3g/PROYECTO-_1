@@ -38,13 +38,7 @@ REIN_TMR0 MACRO    ; CREAR MACRO REIN_TMR0.
     MOVWF   TMR0    ; EL CUAL OBTUBIMOS CON LA FORMULA PARA UN TIEMPO DE 10MS.    
     BCF	    T0IF    ; LIMPIAMOS LA BANDERA DEL TMR0.
     ENDM      
-;reiniciar_Tmr1 macro	//macro reiniciar Tmr1
-   ; movlw   0x0B	//1 segundo
-   ; movwf   TMR1H	//Asignar valor a TMR1H
-   ; movlw   0xDC
-   ; movwf   TMR1L	//Asignar valor a TMR1L
-   ; bcf	    TMR1IF	//Limpiar bandera de carry/interrupción de Tmr1
-   ; endm
+
 REIN_TMR1 MACRO
     MOVLW   0x0B    ; ASIGNAMOS EL VALOR DE 0x85 AL TMR1H, 
     MOVWF   TMR1H   ; EL CUAL ES LA PARTE SUPERIOR DEL NUMERO DE CONTES SELECCIONADO.    
@@ -53,21 +47,16 @@ REIN_TMR1 MACRO
     BCF	    TMR1IF  ; LIMPIAMOS LA BANDERA DEL TMR1.
     ENDM    
     
-;reiniciar_tmr2 macro	//Macro reinicio Tmr2
-    ;banksel PR2
-    ;movlw   244		//Mover valor a PR2
-    ;movwf   PR2		
-    
-    ;banksel T2CON
-    ;clrf    TMR2	//Limpiar registro TMR2
-    ;bcf	    TMR2IF	//Limpiar bandera para reinicio 
-    ;endm
     
   PSECT udata_bank0 ;common memory
 ;--------Varaibles Generales--------------
     banderas:	      DS 1
     estado:	      DS 1
     valor_titileo:    DS 1
+    NEXT:             DS 1  
+    SF1:              DS 1 
+    SF2:              DS 1 
+    SF3:              DS 1 
 ;--------Varaibles para controlar los semaforos------------
     semaforo1:	      DS 1
     semaforo2:        DS 1
@@ -175,37 +164,38 @@ Interr_Tmr0:
     goto    displaydecen_S3  ;Llamar a subrutina de displaydecena
     movlw   00000001B
     movwf   banderas
-
-CDL_Semaforos:    
+    ;RETURN
+CDL_Semaforos:
+   ;RETURN
 ;---------------Control de titileo y luz amarialla del semaforo 3---------------
     movlw   4			;titilro sem3
-    subwf   semaforo3, 0	;Guarda en w
+    subwf   SF3, 0	;Guarda en w
     btfss   STATUS, 0
     GOTO    amarillo_semaforo3
     movlw   7
-    subwf   semaforo3, 0
+    subwf   SF3, 0
     btfss   STATUS, 0
     GOTO    Rut_Titileo3
 ;-----subrutina de Control de titileo y luz amarialla del semaforo 2------------
     call    tit2
 ;---------------Control de titileo y luz amarialla del semaforo 1---------------
     movlw   4			;titileo Sem1
-    subwf   semaforo1, 0	;Guarda en w
+    subwf   SF1, 0	;Guarda en w
     btfss   STATUS, 0
     goto    amarillo_semaforo1
     movlw   7
-    subwf   semaforo1,0
+    subwf   SF1,0
     btfss   STATUS, 0
     goto    Rut_Titileo1
     return
 ;---------------Control de titileo y luz amarialla del semaforo 2-------------
 tit2:
     movlw   4
-    subwf   semaforo2, 0	;Guarda en w
+    subwf   SF2, 0	;Guarda en w
     btfss   STATUS, 0
     GOTO    amarillo_semaforo2
     movlw   7
-    subwf   semaforo2,0
+    subwf   SF2,0
     btfss   STATUS, 0
     GOTO    Rut_Titileo2
     return
@@ -241,8 +231,8 @@ amarillo_semaforo1:
     bcf	    PORTA, 0
     bsf	    PORTA, 1
     bcf	    PORTA, 2
-    movlw   0			;titileo Sem1
-    subwf   semaforo1, 0	;Guarda en w
+    movlw   0x00			;titileo Sem1
+    subwf   SF1, 0	;Guarda en w
     btfsc   STATUS, 2
     goto    rojoSE1
     return
@@ -255,7 +245,7 @@ amarillo_semaforo2:
     bsf	    PORTA, 4
     bcf	    PORTA, 5
     movlw   0			;titileo Sem1
-    subwf   semaforo2, 0	;Guarda en w
+    subwf   SF2, 0	;Guarda en w
     btfsc   STATUS, 2
     goto    rojoSE2
     return
@@ -268,7 +258,7 @@ amarillo_semaforo3:
     bcf	    PORTA, 6
     bsf	    PORTA, 7
     movlw   0			;titileo Sem1
-    subwf   semaforo3, 0	;Guarda en w
+    subwf   SF3, 0	;Guarda en w
     btfsc   STATUS, 2
     goto    rojoSE3
     return
@@ -429,16 +419,18 @@ interrup_estado_0:
     movwf   S1_Actual
     movf    S1_Actual, W
     movwf   semaforo1
+    MOVWF   SF1
     
     movf    S2_temporal, W
     movwf   S2_Actual
     movf    S2_Actual, W
     movwf   semaforo2 
-    
+    MOVWF   SF2
     movf    S3_temporal, W
     movwf   S3_Actual
     movf    S3_Actual, W
     movwf   semaforo3
+    MOVWF   SF3
     clrf    estado
     clrf    PORTA
     bsf     PORTA,0
@@ -488,6 +480,7 @@ valor_maxSemaforo3:
 Interr_Tmr2:
     BCF    TMR2IF
     INCF   valor_titileo
+    
     return
   PSECT code, delta=2, abs
   ORG 180h	;Posición para el código
@@ -550,20 +543,27 @@ Interr_Tmr2:
 ;--------Datos que siempre va leer el main sin importa lo que hagamos-----------
     banksel PORTA 
     clrf    estado
+    movlw   0x00
+    movwf   NEXT
+    
     movlw   0x0A
     movwf   S1_Actual
     movf    S1_Actual, W
     movwf   semaforo1
+    movwf   SF1
+    
     movlw   0x0A
     movwf   S2_Actual
     movf    S2_Actual, W
     movwf   semaforo2
+    movwf   SF2
+    
     movlw   0x0A
     movwf   S3_Actual
     movf    S3_Actual, W
     movwf   semaforo3
+    movwf   SF3
     bsf	    PORTA, 0
-    bcf	    PORTA, 1
     bsf	    PORTA, 5
     bsf	    PORTB, 7
 ;----------loop principal---------------------
@@ -571,7 +571,26 @@ Interr_Tmr2:
     btfss   TMR1IF	    ;Funcionamiento semaforo1
     goto    $-1
     REIN_TMR1
+   
+    movlw   0x00
+    subwf   NEXT,0
+    btfsC   STATUS, 2  
     call    IN_Semaforo1
+    
+    movlw   1
+    subwf   NEXT,0
+    btfsC   STATUS, 2  
+    call    IN_Semaforo2
+    
+    movlw   2
+    subwf   NEXT,0
+    btfsC   STATUS, 2  
+    call    IN_Semaforo3
+    
+    movlw   3
+    subwf   NEXT,0
+    btfsC   STATUS, 2  
+    call    asignarvalor
     
     movf    semaforo1, w    ;Displays semaforo1
     movwf   V1
@@ -641,16 +660,34 @@ Interr_Tmr2:
     goto    loop
 ;------------sub rutinas---------------------    
 IN_Semaforo1: 
+    
     movlw   0x00
     subwf   semaforo1
     btfsc   STATUS, 2
-    goto    IN_Semaforo2
-    
+    goto    NEXT_SF1
+    bsf	    PORTA, 0
+    ;bcf	    PORTA, 1
+    bsf	    PORTA, 5
+    bsf	    PORTB, 7
     decf    semaforo1
-    ;MOVF    semaforo1,W
-    ;MOVWF   semaforo2
-    ;MOVWF   semaforo2
+    DECF    SF1 
+    MOVF    semaforo1,W
+    MOVWF   semaforo2
+    MOVF    S2_Actual,W
+    ADDWF   semaforo1,W
+    MOVWF   semaforo3
     return 
+NEXT_SF1: 
+    ;movf    S1_Actual, W
+    ;movwf   SF1
+    CLRF   SF1
+    
+    movf    S2_Actual, W
+    movwf   semaforo2
+    INCF    NEXT
+    RETURN
+    
+    
 IN_Semaforo2:
     bsf	    PORTA, 3	;verdeSE2
     bcf	    PORTA, 5	;Rojo SE2
@@ -658,9 +695,24 @@ IN_Semaforo2:
     movlw   0x00
     subwf   semaforo2
     btfsc   STATUS, 2
-    goto    IN_Semaforo3
+    goto    NEXT_SF2
     decf    semaforo2
+    DECF    SF2 
+    MOVF    semaforo2,W
+    MOVWF   semaforo3
+    MOVF    S3_Actual,W
+    ADDWF   semaforo2,W
+    MOVWF   semaforo1
     return 
+NEXT_SF2:
+    ;movf    S2_Actual, W
+    ;movwf   SF2
+    movf    S3_Actual, W
+    movwf   semaforo3
+    INCF    NEXT
+    RETURN
+    
+    
 IN_Semaforo3:
     bsf	    PORTA, 6
     bsf	    PORTA, 5
@@ -671,14 +723,24 @@ IN_Semaforo3:
     btfsc   STATUS, 2
     goto    asignarvalor
     decf    semaforo3
+    DECF    SF3 
+    MOVF    semaforo3,W
+    MOVWF   semaforo1
+    MOVF    S1_Actual,W
+    ADDWF   semaforo3,W
+    MOVWF   semaforo2
     return 
 asignarvalor:
+    CLRF    NEXT
     movf    S1_Actual, W
     movwf   semaforo1
+    movwf   SF1
     movf    S2_Actual, W
     movwf   semaforo2
+    movwf   SF2
     movf    S3_Actual, W
     movwf   semaforo3
+    movwf   SF3
     movlw   00100001B
     movwf   PORTA
     bsf	    PORTB, 7
@@ -883,18 +945,7 @@ CONFIG_TMR2:
     MOVLW   243
     MOVWF   PR2
     RETURN
- ;config_tmr2:
-  ;  banksel T2CON
-   ; bsf	    T2CON, 7 
-   ; bsf	    TMR2ON
-   ; bsf	    TOUTPS3	;Postscaler 1:16
-   ; bsf	    TOUTPS2
-   ; bsf	    TOUTPS1
-   ; bsf	    TOUTPS0
-   ; bsf	    T2CKPS1	;Preescaler 1:16
-   ; bsf	    T2CKPS0
-   ; reiniciar_tmr2
-   ; return
+ 
  config_reloj:
     banksel OSCCON	;Banco OSCCON 
     bsf	    IRCF2	;OSCCON configuración bit2 IRCF
