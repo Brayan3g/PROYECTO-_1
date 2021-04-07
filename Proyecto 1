@@ -57,6 +57,7 @@ REIN_TMR1 MACRO
     SF1:              DS 1 
     SF2:              DS 1 
     SF3:              DS 1 
+    READY:            DS 1
 ;--------Varaibles para controlar los semaforos------------
     semaforo1:	      DS 1
     semaforo2:        DS 1
@@ -201,9 +202,9 @@ tit2:
     return
  
 Rut_Titileo1:
-    BCF     PORTB,4
-    BCF     PORTB,5
-    BCF     PORTB,6
+    BCF     PORTB,3
+    ;BCF     PORTB,5
+    ;BCF     PORTB,6
     btfss   valor_titileo,0
     goto    DISP_OFF 
     bsf     PORTA,0
@@ -436,9 +437,10 @@ interrup_estado_0:
     bsf     PORTA,0
     bsf     PORTA,5
     bsf     PORTB,7
-    BSF     PORTB,4
-    BSF     PORTB,5
-    BSF     PORTB,6
+    BSF     PORTB,3
+    ;BSF     PORTB,4
+    ;BSF     PORTB,5
+    ;BSF     PORTB,6
 finalIOC:
     bcf	    RBIF
     return
@@ -571,7 +573,8 @@ Interr_Tmr2:
     btfss   TMR1IF	    ;Funcionamiento semaforo1
     goto    $-1
     REIN_TMR1
-   
+  
+    
     movlw   0x00
     subwf   NEXT,0
     btfsC   STATUS, 2  
@@ -659,8 +662,9 @@ Interr_Tmr2:
     movwf   PORTE
     goto    loop
 ;------------sub rutinas---------------------    
-IN_Semaforo1: 
     
+IN_Semaforo1: 
+    BSF     PORTB,4
     movlw   0x00
     subwf   semaforo1
     btfsc   STATUS, 2
@@ -680,8 +684,8 @@ IN_Semaforo1:
 NEXT_SF1: 
     ;movf    S1_Actual, W
     ;movwf   SF1
+    BCF     PORTB,4
     CLRF   SF1
-    
     movf    S2_Actual, W
     movwf   semaforo2
     INCF    NEXT
@@ -689,6 +693,7 @@ NEXT_SF1:
     
     
 IN_Semaforo2:
+    BSF     PORTB,5
     bsf	    PORTA, 3	;verdeSE2
     bcf	    PORTA, 5	;Rojo SE2
     clrf    semaforo1   
@@ -707,6 +712,7 @@ IN_Semaforo2:
 NEXT_SF2:
     ;movf    S2_Actual, W
     ;movwf   SF2
+    BCF     PORTB,5
     movf    S3_Actual, W
     movwf   semaforo3
     INCF    NEXT
@@ -714,6 +720,7 @@ NEXT_SF2:
     
     
 IN_Semaforo3:
+    BSF     PORTB,6
     bsf	    PORTA, 6
     bsf	    PORTA, 5
     bcf     PORTB, 7
@@ -731,6 +738,7 @@ IN_Semaforo3:
     MOVWF   semaforo2
     return 
 asignarvalor:
+    BCF     PORTB,6
     CLRF    NEXT
     movf    S1_Actual, W
     movwf   semaforo1
